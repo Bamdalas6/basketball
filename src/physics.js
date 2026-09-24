@@ -50,9 +50,11 @@ export class PhysicsWorld {
     ball.position.z += ball.velocity.z * dt;
 
     // Ball rotation spin
-    ball.rotation.x += ball.angularVelocity.x * dt;
-    ball.rotation.y += ball.angularVelocity.y * dt;
-    ball.rotation.z += ball.angularVelocity.z * dt;
+    if (ball.rotation) {
+      ball.rotation.x += (ball.angularVelocity?.x || 0) * dt;
+      ball.rotation.y += (ball.angularVelocity?.y || 0) * dt;
+      ball.rotation.z += (ball.angularVelocity?.z || 0) * dt;
+    }
 
     // Check Scoring Sensor
     this.checkScoring(ball, prevY);

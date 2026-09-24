@@ -22,7 +22,8 @@ const restartBtn = document.getElementById('btn-restart');
 
 // Sound state
 let soundEnabled = true;
-soundBtn.addEventListener('click', () => {
+soundBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
   soundEnabled = sound.toggle();
   soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
 });
@@ -33,9 +34,9 @@ const game = new GameManager(sound);
 
 // Setup Three.js Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0d0f);
+scene.background = new THREE.Color(0x0a0a0c);
 
-// Camera Setup: Tuned for mobile portrait and desktop so the ball is ALWAYS prominent at bottom
+// Camera Setup: Tuned so the ball is ALWAYS prominent and visible at the bottom center
 const camera = new THREE.PerspectiveCamera(
   72,
   canvasContainer.clientWidth / canvasContainer.clientHeight,
@@ -54,7 +55,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 canvasContainer.appendChild(renderer.domElement);
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
 scene.add(ambientLight);
 
 const mainSpot = new THREE.SpotLight(0xfff5ea, 1.5);
@@ -164,7 +165,7 @@ const netMesh = new THREE.Mesh(netGeo, netMat);
 netMesh.position.set(0, 2.86, 0.45);
 hoopGroup.add(netMesh);
 
-// 4. Basketball Setup: Large, highly visible ball at bottom center
+// 4. Basketball Setup: Large, visible ball at bottom center
 const ballRadius = 0.30;
 const ballTexture = createBasketballTexture();
 const ballGeo = new THREE.SphereGeometry(ballRadius, 32, 32);
@@ -183,9 +184,10 @@ const ballRestPosition = new THREE.Vector3(0, 0.38, 4.25);
 const ball = {
   mesh: ballMesh,
   radius: ballRadius,
-  position: new THREE.Vector3(),
-  velocity: new THREE.Vector3(),
-  angularVelocity: new THREE.Vector3(),
+  position: new THREE.Vector3().copy(ballRestPosition),
+  rotation: new THREE.Euler(0.1, 0, 0),
+  velocity: new THREE.Vector3(0, 0, 0),
+  angularVelocity: new THREE.Vector3(0, 0, 0),
   active: false,
   hasScored: false,
   touchedRim: false,
@@ -197,10 +199,11 @@ const ball = {
 
 function resetBall() {
   ball.position.copy(ballRestPosition);
+  ball.rotation.set(0.1, 0, 0);
   ball.velocity.set(0, 0, 0);
   ball.angularVelocity.set(0, 0, 0);
   ballMesh.position.copy(ballRestPosition);
-  ballMesh.rotation.set(0.1, 0, 0);
+  ballMesh.rotation.copy(ball.rotation);
   ball.active = false;
   ball.hasScored = false;
   ball.touchedRim = false;
@@ -224,60 +227,62 @@ ball.onSettle = () => {
 };
 
 // Trajectory Prediction Dots
-const maxDots = 12;
+const maxDots = 14;
 const dotGeo = new THREE.SphereGeometry(0.035, 8, 8);
-const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
 const dotInstanced = new THREE.InstancedMesh(dotGeo, dotMat, maxDots);
 dotInstanced.visible = false;
 scene.add(dotInstanced);
 
-// 5. Swipe Input Handling
+// 5. Unified Pointer Events (Mouse, Touch, Stylus)
 let isPointerDown = false;
 let pointerStart = { x: 0, y: 0, time: 0 };
 let pointerCurrent = { x: 0, y: 0 };
 
-function getPointerPos(e) {
-  const rect = canvasContainer.getBoundingClientRect();
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  return {
-    x: clientX - rect.left,
-    y: clientY - rect.top,
-    width: rect.width,
-    height: rect.height
-  };
+function launchBall(vx, vy, vz) {
+  if (ball.active) return;
+  game.recordShotStart();
+
+  ball.position.copy(ballRestPosition);
+  ball.velocity.set(vx, vy, vz);
+  ball.angularVelocity.set(-14.0, (Math.random() - 0.5) * 2.0, vx * 1.5);
+  ball.active = true;
+
+  sound.playWhoosh();
+
+  if (swipeHintEl) {
+    swipeHintEl.style.display = 'none';
+  }
 }
 
 function handlePointerDown(e) {
   if (ball.active) return;
   sound.init(); // unlock audio on user gesture
 
-  const pos = getPointerPos(e);
-  // Tap anywhere in lower half to shoot
-  if (pos.y < pos.height * 0.35) return;
-
   isPointerDown = true;
-  pointerStart = { x: pos.x, y: pos.y, time: performance.now() };
-  pointerCurrent = { x: pos.x, y: pos.y };
+  pointerStart = { x: e.clientX, y: e.clientY, time: performance.now() };
+  pointerCurrent = { x: e.clientX, y: e.clientY };
 
-  if (swipeHintEl) {
-    swipeHintEl.style.opacity = '0';
+  try {
+    canvasContainer.setPointerCapture(e.pointerId);
+  } catch (err) {
+    // Ignore pointer capture if not supported
   }
 }
 
 function handlePointerMove(e) {
   if (!isPointerDown || ball.active) return;
-  const pos = getPointerPos(e);
-  pointerCurrent = { x: pos.x, y: pos.y };
+  pointerCurrent = { x: e.clientX, y: e.clientY };
 
   const dx = pointerStart.x - pointerCurrent.x;
   const dy = pointerStart.y - pointerCurrent.y; // upward drag
+  const rect = canvasContainer.getBoundingClientRect();
 
-  if (dy > 15) {
+  if (dy > 12) {
     dotInstanced.visible = true;
-    const simVx = -(dx / pos.width) * 4.8;
-    const simVy = Math.min(12.5, Math.max(9.0, (dy / pos.height) * 11.5 + 6.8));
-    const simVz = -Math.min(6.8, Math.max(4.6, (dy / pos.height) * 6.5 + 3.6));
+    const simVx = -(dx / rect.width) * 4.6;
+    const simVy = Math.min(12.6, Math.max(9.2, (dy / rect.height) * 11.5 + 6.8));
+    const simVz = -Math.min(6.8, Math.max(4.6, (dy / rect.height) * 6.5 + 3.6));
 
     const dummy = new THREE.Object3D();
     const dt = 0.05;
@@ -309,38 +314,45 @@ function handlePointerUp(e) {
   isPointerDown = false;
   dotInstanced.visible = false;
 
+  try {
+    canvasContainer.releasePointerCapture(e.pointerId);
+  } catch (err) {
+    // Ignore
+  }
+
   const now = performance.now();
   const dt = Math.max(40, now - pointerStart.time);
-  const dx = pointerStart.x - pointerCurrent.x;
-  const dy = pointerStart.y - pointerCurrent.y;
+  const dx = pointerStart.x - e.clientX;
+  const dy = pointerStart.y - e.clientY;
   const rect = canvasContainer.getBoundingClientRect();
 
-  // Minimum upward drag to shoot
-  if (dy > 25) {
-    game.recordShotStart();
-
-    // Natural physics flick calculation
+  if (dy > 18) {
+    // User swiped/flicked upward
     const speedRatio = Math.min(2.0, Math.max(0.7, 240 / dt));
     const vx = -(dx / rect.width) * 5.2;
-    const vy = Math.min(12.8, Math.max(9.2, (dy / rect.height) * 11.2 + 5.8 * speedRatio));
+    const vy = Math.min(12.8, Math.max(9.4, (dy / rect.height) * 11.2 + 5.8 * speedRatio));
     const vz = -Math.min(7.0, Math.max(4.8, (dy / rect.height) * 6.2 + 3.2 * speedRatio));
-
-    ball.velocity.set(vx, vy, vz);
-    ball.angularVelocity.set(-12.0, (Math.random() - 0.5) * 2.0, (dx / rect.width) * 6.0);
-    ball.active = true;
-
-    sound.playWhoosh();
+    launchBall(vx, vy, vz);
+  } else if (dt < 400 && Math.abs(dx) < 30 && Math.abs(dy) < 30) {
+    // Tap or quick click to shoot! Aim towards current hoop position
+    const targetX = game.hoopPositionX * 0.45;
+    const vx = targetX + (Math.random() - 0.5) * 0.25;
+    const vy = 10.75 + (Math.random() - 0.5) * 0.3;
+    const vz = -5.38 + (Math.random() - 0.5) * 0.2;
+    launchBall(vx, vy, vz);
   }
 }
 
-// Event listeners
-canvasContainer.addEventListener('mousedown', handlePointerDown);
-window.addEventListener('mousemove', handlePointerMove);
-window.addEventListener('mouseup', handlePointerUp);
+function handlePointerCancel(e) {
+  isPointerDown = false;
+  dotInstanced.visible = false;
+}
 
-canvasContainer.addEventListener('touchstart', handlePointerDown, { passive: true });
-window.addEventListener('touchmove', handlePointerMove, { passive: true });
-window.addEventListener('touchend', handlePointerUp, { passive: true });
+// Attach Unified Pointer Listeners
+canvasContainer.addEventListener('pointerdown', handlePointerDown);
+canvasContainer.addEventListener('pointermove', handlePointerMove);
+canvasContainer.addEventListener('pointerup', handlePointerUp);
+canvasContainer.addEventListener('pointercancel', handlePointerCancel);
 
 // Game Manager UI Handlers
 game.onStateChange = (state) => {
@@ -363,7 +375,8 @@ game.onComboEvent = (text, color) => {
   comboBannerEl.classList.add('animate');
 };
 
-restartBtn.addEventListener('click', () => {
+restartBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
   resetBall();
   game.reset();
 });
@@ -377,7 +390,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(w, h);
 });
 
-// Start immediately!
+// Start game
 game.start();
 
 // Main Animation & Physics Loop
@@ -401,9 +414,10 @@ function animate() {
   if (ball.active) {
     physics.step(ball, dt);
     ballMesh.position.copy(ball.position);
+    ballMesh.rotation.copy(ball.rotation);
   } else {
     // Idle gentle hover/breathing animation
-    const idleY = ballRestPosition.y + Math.sin(now * 0.004) * 0.015;
+    const idleY = ballRestPosition.y + Math.sin(now * 0.004) * 0.012;
     ballMesh.position.y = idleY;
   }
 
