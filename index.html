@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Arcade Basketball Shootout</title>
+  <title>Arcade Basketball</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/src/style.css">
 </head>
@@ -13,19 +13,16 @@
       <!-- 3D WebGL Canvas Layer -->
       <div id="canvas-container"></div>
 
-      <!-- Top HUD matching reference screenshot -->
+      <!-- Top HUD: Just YOU and your Score -->
       <div id="hud-header">
-        <!-- Player Avatar -->
+        <!-- Player Avatar on Left -->
         <div class="avatar-badge">
           <div class="avatar-circle">
             <svg class="avatar-svg" viewBox="0 0 100 100">
-              <!-- Hair & Head -->
               <circle cx="50" cy="50" r="38" fill="#a16207"/>
               <path d="M20 50 Q16 20 50 16 Q84 20 80 50" fill="#3f2305"/>
-              <!-- Winking / Playful Face -->
               <ellipse cx="38" cy="46" rx="4" ry="4" fill="#000"/>
               <path d="M58 46 Q64 42 70 46" stroke="#000" stroke-width="4" stroke-linecap="round" fill="none"/>
-              <!-- Open smile with tongue out -->
               <path d="M36 60 Q50 74 64 60 Z" fill="#7f1d1d"/>
               <path d="M44 64 Q50 78 56 64 Z" fill="#f43f5e"/>
             </svg>
@@ -36,95 +33,33 @@
         <!-- Central Scoreboard -->
         <div id="scoreboard-casing">
           <div class="score-cell">
-            <span class="score-title">YOU</span>
-            <span id="score-player" class="led-number">00</span>
+            <span class="score-title">SCORE</span>
+            <span id="score-player" class="led-number">0</span>
           </div>
 
-          <div class="timer-box">
-            <span id="timer-display" class="led-timer">00:60</span>
-          </div>
+          <div class="score-divider"></div>
 
           <div class="score-cell">
-            <span class="score-title">OPPONENT</span>
-            <span id="score-opponent" class="led-number">00</span>
+            <span class="score-title">BEST</span>
+            <span id="score-best" class="led-number led-yellow">0</span>
           </div>
         </div>
 
-        <!-- Opponent Avatar -->
-        <div class="avatar-badge">
-          <div class="avatar-circle opponent">
-            <svg class="avatar-svg" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="38" fill="#78350f"/>
-              <path d="M22 45 Q20 18 50 16 Q80 18 78 45" fill="#18181b"/>
-              <!-- Intense eyes -->
-              <ellipse cx="36" cy="45" rx="5" ry="3" fill="#fff"/>
-              <circle cx="36" cy="45" r="2.5" fill="#000"/>
-              <ellipse cx="64" cy="45" rx="5" ry="3" fill="#fff"/>
-              <circle cx="64" cy="45" r="2.5" fill="#000"/>
-              <!-- Grin -->
-              <path d="M34 60 Q50 72 66 60" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
-            </svg>
-          </div>
-          <span class="avatar-label">Opponent</span>
+        <!-- Controls on Right -->
+        <div class="hud-controls">
+          <button id="btn-sound" class="mini-btn" title="Toggle Sound">🔊</button>
+          <button id="btn-restart" class="mini-btn" title="Reset Score">🔄</button>
         </div>
       </div>
 
       <!-- Streak & Combo Overlay -->
       <div id="streak-badge">STREAK x3 🔥</div>
-      <div id="combo-banner">SWISH! +3</div>
+      <div id="combo-banner">SWISH!</div>
 
       <!-- Swipe Guidance Hint -->
       <div id="swipe-hint">
         <div class="hint-arrow"></div>
         <span>SWIPE UP TO SHOOT</span>
-      </div>
-
-      <!-- Quick Control Floating Buttons -->
-      <div id="quick-controls">
-        <button id="btn-sound" class="round-btn" title="Toggle Sound">🔊</button>
-        <button id="btn-pause" class="round-btn" title="Pause Game">⏸️</button>
-        <button id="btn-restart" class="round-btn" title="Restart">🔄</button>
-      </div>
-
-      <!-- Start Modal -->
-      <div id="start-modal" class="modal-overlay">
-        <div class="modal-card">
-          <h1 class="modal-title">BASKETBALL SHOOTOUT</h1>
-          <p class="modal-desc">Flick the ball upward towards the hoop. Score clean swishes for combos and beat your rival!</p>
-          
-          <div class="form-group">
-            <label class="form-label" for="game-mode-select">Game Mode</label>
-            <select id="game-mode-select" class="custom-select">
-              <option value="VS_OPPONENT">1v1 vs Rival (60s Shootout)</option>
-              <option value="STREAK">Streak Mode (3 Strikes & Out)</option>
-              <option value="PRACTICE">Free Throw Practice</option>
-            </select>
-          </div>
-
-          <button id="btn-play-now" class="primary-btn">PLAY NOW</button>
-        </div>
-      </div>
-
-      <!-- Game Over Modal -->
-      <div id="game-over-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-          <h1 id="final-result-text" class="modal-title">GAME OVER</h1>
-          
-          <div class="game-over-scores">
-            <div class="go-score-col">
-              <span>YOU</span>
-              <span id="final-score-player">0</span>
-            </div>
-            <div class="go-score-col">
-              <span>RIVAL</span>
-              <span id="final-score-opponent">0</span>
-            </div>
-          </div>
-
-          <div id="final-stats" class="game-over-stats"></div>
-
-          <button id="btn-play-again" class="primary-btn">PLAY AGAIN</button>
-        </div>
       </div>
     </div>
   </div>

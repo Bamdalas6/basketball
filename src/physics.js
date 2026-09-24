@@ -10,15 +10,15 @@ export class PhysicsWorld {
     // Hoop coordinates
     this.hoop = {
       x: 0,
-      y: 3.5,
+      y: 3.2,
       z: 0.45,
       rimRadius: 0.45,
       rimTubeRadius: 0.025,
       backboardZ: 0.02,
       bbWidth: 2.3,
       bbHeight: 1.7,
-      bbMinY: 2.7,
-      bbMaxY: 4.5
+      bbMinY: 2.4,
+      bbMaxY: 4.1
     };
 
     // Restitutions
