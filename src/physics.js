@@ -68,16 +68,41 @@ export class PhysicsWorld {
     // Collision with Floor
     this.checkFloorCollision(ball);
 
-    // Bounds checking / Reset after shot expires
-    if (ball.position.y < 0.1 && Math.abs(ball.velocity.y) < 0.5) {
+    // Track shot duration
+    ball.shotTime = (ball.shotTime || 0) + dt;
+
+    // 1. If ball scored and dropped through the net
+    if (ball.hasScored && ball.position.y < 2.2) {
       ball.settleTimer += dt;
-      if (ball.settleTimer > 0.8) {
+      if (ball.settleTimer > 0.35) {
         ball.active = false;
         if (ball.onSettle) ball.onSettle(ball);
+        return;
       }
-    } else if (ball.position.z < -4 || ball.position.z > 12 || Math.abs(ball.position.x) > 6) {
+    }
+
+    // 2. If ball hits the floor after flight (floor Y is ball.radius)
+    if (ball.shotTime > 0.45 && ball.position.y <= ball.radius + 0.08) {
+      ball.settleTimer += dt;
+      if (ball.settleTimer > 0.35) {
+        ball.active = false;
+        if (ball.onSettle) ball.onSettle(ball);
+        return;
+      }
+    }
+
+    // 3. Out of bounds
+    if (ball.position.z < -3 || ball.position.z > 8 || Math.abs(ball.position.x) > 4.5) {
       ball.active = false;
       if (ball.onSettle) ball.onSettle(ball);
+      return;
+    }
+
+    // 4. Absolute failsafe watchdog: never let a shot stay active longer than 2.0 seconds
+    if (ball.shotTime > 2.0) {
+      ball.active = false;
+      if (ball.onSettle) ball.onSettle(ball);
+      return;
     }
   }
 

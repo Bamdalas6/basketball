@@ -198,17 +198,21 @@ const ball = {
 };
 
 function resetBall() {
+  clearTimeout(ball.watchdogTimer);
   ball.position.copy(ballRestPosition);
   ball.rotation.set(0.1, 0, 0);
   ball.velocity.set(0, 0, 0);
   ball.angularVelocity.set(0, 0, 0);
   ballMesh.position.copy(ballRestPosition);
   ballMesh.rotation.copy(ball.rotation);
+  ballMesh.visible = true;
+  ballMesh.scale.set(1, 1, 1);
   ball.active = false;
   ball.hasScored = false;
   ball.touchedRim = false;
   ball.touchedBackboard = false;
   ball.settleTimer = 0;
+  ball.shotTime = 0;
 }
 
 resetBall();
@@ -218,12 +222,13 @@ ball.onScore = (isSwish) => {
 };
 
 ball.onSettle = () => {
+  clearTimeout(ball.watchdogTimer);
   if (!ball.hasScored) {
     game.recordMiss();
   }
   setTimeout(() => {
     resetBall();
-  }, 350);
+  }, 250);
 };
 
 // Trajectory Prediction Dots
@@ -247,12 +252,26 @@ function launchBall(vx, vy, vz) {
   ball.velocity.set(vx, vy, vz);
   ball.angularVelocity.set(-14.0, (Math.random() - 0.5) * 2.0, vx * 1.5);
   ball.active = true;
+  ball.hasScored = false;
+  ball.touchedRim = false;
+  ball.touchedBackboard = false;
+  ball.settleTimer = 0;
+  ball.shotTime = 0;
 
   sound.playWhoosh();
 
   if (swipeHintEl) {
     swipeHintEl.style.display = 'none';
   }
+
+  // Failsafe watchdog timer: ensure the ball always returns in <= 2.2 seconds
+  clearTimeout(ball.watchdogTimer);
+  ball.watchdogTimer = setTimeout(() => {
+    if (ball.active) {
+      if (!ball.hasScored) game.recordMiss();
+      resetBall();
+    }
+  }, 2200);
 }
 
 function handlePointerDown(e) {
